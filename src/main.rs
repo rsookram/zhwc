@@ -10,7 +10,7 @@ fn main() -> Result<()> {
 
     let jieba = Jieba::new();
 
-    let mut counts = HashMap::<_, u32>::new();
+    let mut counts = HashMap::<_, u32>::with_capacity(8 * 1024);
 
     for path in args {
         let text = std::fs::read_to_string(&path)?;
