@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.57"
 jieba-rs = "0.6.6"
+pico-args = "0.4.2"
