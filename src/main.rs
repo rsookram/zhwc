@@ -17,7 +17,9 @@ fn main() -> Result<()> {
 
         let words = jieba.cut(&text, true);
         for w in words {
-            *counts.entry(w.to_string()).or_insert(0) += 1;
+            if should_count(w) {
+                *counts.entry(w.to_string()).or_insert(0) += 1;
+            }
         }
     }
 
@@ -30,4 +32,8 @@ fn main() -> Result<()> {
     stdout.flush()?;
 
     Ok(())
+}
+
+fn should_count(word: &str) -> bool {
+    word.chars().any(|c| c >= '一' && c <= '\u{9fff}')
 }
