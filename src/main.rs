@@ -66,6 +66,9 @@ fn main() -> Result<()> {
 
     let mut stdout = BufWriter::with_capacity(64 * 1024, std::io::stdout().lock());
 
+    let mut counts = counts.into_iter().collect::<Vec<_>>();
+    counts.sort_by_cached_key(|(w, c)| (std::cmp::Reverse(*c), w.to_string()));
+
     for (word, count) in counts {
         writeln!(stdout, "{word} {count}")?;
     }
