@@ -33,8 +33,6 @@ fn main() -> Result<()> {
 
     let jieba = Arc::new(Jieba::new());
 
-    let mut counts = HashMap::<_, u32>::with_capacity(8 * 1024);
-
     let mut handles = Vec::new();
 
     for path in paths {
@@ -44,15 +42,23 @@ fn main() -> Result<()> {
 
         handles.push(thread::spawn(move || {
             fs::read_to_string(&path).map(|text| {
-                jieba
+                let mut counts = HashMap::<_, u32>::with_capacity(1024);
+
+                let words = jieba
                     .cut(&text, true)
                     .into_iter()
-                    .filter(|w| should_count(&excludes, w))
-                    .map(|w| w.to_string())
-                    .collect::<Vec<_>>()
+                    .filter(|w| should_count(&excludes, w));
+
+                for w in words {
+                    *counts.entry(w.to_string()).or_insert(0) += 1;
+                }
+
+                counts
             })
         }));
     }
+
+    let mut counts = HashMap::<_, u32>::with_capacity(8 * 1024);
 
     for handle in handles {
         let words = match handle.join() {
@@ -60,8 +66,8 @@ fn main() -> Result<()> {
             Err(e) => bail!("{e:?}"),
         };
 
-        for w in words {
-            *counts.entry(w).or_insert(0) += 1;
+        for (w, count) in words {
+            *counts.entry(w).or_insert(0) += count;
         }
     }
 
