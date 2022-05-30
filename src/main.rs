@@ -29,6 +29,7 @@ fn main() -> Result<()> {
         }
         None => Default::default(),
     };
+    let excludes = Arc::new(excludes);
 
     let jieba = Arc::new(Jieba::new());
 
@@ -39,12 +40,14 @@ fn main() -> Result<()> {
     for path in paths {
         // TODO: Limit parallelism
         let jieba = Arc::clone(&jieba);
+        let excludes = Arc::clone(&excludes);
 
         handles.push(thread::spawn(move || {
             fs::read_to_string(&path).map(|text| {
                 jieba
                     .cut(&text, true)
                     .into_iter()
+                    .filter(|w| should_count(&excludes, w))
                     .map(|w| w.to_string())
                     .collect::<Vec<_>>()
             })
@@ -58,9 +61,7 @@ fn main() -> Result<()> {
         };
 
         for w in words {
-            if should_count(&excludes, &w) {
-                *counts.entry(w).or_insert(0) += 1;
-            }
+            *counts.entry(w).or_insert(0) += 1;
         }
     }
 
