@@ -3,6 +3,7 @@ use jieba_rs::Jieba;
 use pico_args::Arguments;
 use std::collections::{HashMap, HashSet};
 use std::convert::Infallible;
+use std::ffi::OsString;
 use std::fs;
 use std::io::BufWriter;
 use std::io::Write;
@@ -37,24 +38,11 @@ fn main() -> Result<()> {
 
     for path in paths {
         // TODO: Limit parallelism
-        let jieba = Arc::clone(&jieba);
-        let excludes = Arc::clone(&excludes);
+        handles.push(thread::spawn({
+            let jieba = Arc::clone(&jieba);
+            let excludes = Arc::clone(&excludes);
 
-        handles.push(thread::spawn(move || {
-            fs::read_to_string(&path).map(|text| {
-                let mut counts = HashMap::<_, u32>::with_capacity(1024);
-
-                let words = jieba
-                    .cut(&text, true)
-                    .into_iter()
-                    .filter(|w| should_count(&excludes, w));
-
-                for w in words {
-                    *counts.entry(w.to_string()).or_insert(0) += 1;
-                }
-
-                counts
-            })
+            move || run(jieba, excludes, &path)
         }));
     }
 
@@ -83,6 +71,26 @@ fn main() -> Result<()> {
     stdout.flush()?;
 
     Ok(())
+}
+
+fn run(
+    jieba: Arc<Jieba>,
+    excludes: Arc<HashSet<String>>,
+    path: &OsString,
+) -> Result<HashMap<String, u32>> {
+    let text = fs::read_to_string(&path)?;
+    let mut counts = HashMap::<_, u32>::with_capacity(1024);
+
+    let words = jieba
+        .cut(&text, true)
+        .into_iter()
+        .filter(|w| should_count(&excludes, w));
+
+    for w in words {
+        *counts.entry(w.to_string()).or_insert(0) += 1;
+    }
+
+    Ok(counts)
 }
 
 fn should_count(excludes: &HashSet<String>, word: &str) -> bool {
