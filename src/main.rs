@@ -36,13 +36,13 @@ fn main() -> Result<()> {
 
     let mut handles = Vec::new();
 
-    for path in paths {
-        // TODO: Limit parallelism
+    let chunk_size = paths.len() as f64 / thread::available_parallelism()?.get() as f64;
+    for chunk in paths.chunks(chunk_size.ceil() as usize).map(|x| x.to_vec()) {
         handles.push(thread::spawn({
             let jieba = Arc::clone(&jieba);
             let excludes = Arc::clone(&excludes);
 
-            move || run(jieba, excludes, &path)
+            move || run(jieba, excludes, &chunk)
         }));
     }
 
@@ -76,18 +76,21 @@ fn main() -> Result<()> {
 fn run(
     jieba: Arc<Jieba>,
     excludes: Arc<HashSet<String>>,
-    path: &OsString,
+    paths: &[OsString],
 ) -> Result<HashMap<String, u32>> {
-    let text = fs::read_to_string(&path)?;
     let mut counts = HashMap::<_, u32>::with_capacity(1024);
 
-    let words = jieba
-        .cut(&text, true)
-        .into_iter()
-        .filter(|w| should_count(&excludes, w));
+    for path in paths {
+        let text = fs::read_to_string(path)?;
 
-    for w in words {
-        *counts.entry(w.to_string()).or_insert(0) += 1;
+        let words = jieba
+            .cut(&text, true)
+            .into_iter()
+            .filter(|w| should_count(&excludes, w));
+
+        for w in words {
+            *counts.entry(w.to_string()).or_insert(0) += 1;
+        }
     }
 
     Ok(counts)
