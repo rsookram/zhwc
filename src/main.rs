@@ -97,5 +97,5 @@ fn run(
 }
 
 fn should_count(excludes: &HashSet<String>, word: &str) -> bool {
-    !excludes.contains(word) && word.chars().any(|c| c >= '一' && c <= '\u{9fff}')
+    !excludes.contains(word) && word.chars().any(|c| ('一'..='\u{9fff}').contains(&c))
 }
